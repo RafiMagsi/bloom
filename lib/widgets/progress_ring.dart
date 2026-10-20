@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/bloom_theme.dart';
 
-/// Animated completion ring for the daily dashboard (sage progress accent).
+/// Animated completion ring for the daily dashboard (orchid progress accent).
 class ProgressRing extends StatelessWidget {
   const ProgressRing({
     super.key,
@@ -66,7 +66,13 @@ class _RingPainter extends CustomPainter {
       ..shader = const SweepGradient(
         startAngle: -math.pi / 2,
         endAngle: 3 * math.pi / 2,
-        colors: [BloomPalette.sage, BloomPalette.sageDeep, BloomPalette.sage],
+        colors: [
+          BloomPalette.blush,
+          BloomPalette.blushDeep,
+          BloomPalette.orchidDeep,
+          BloomPalette.blush,
+        ],
+        stops: [0.0, 0.45, 0.8, 1.0],
         transform: GradientRotation(-math.pi / 2),
       ).createShader(rect);
 
@@ -75,7 +81,7 @@ class _RingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke + 9
       ..strokeCap = StrokeCap.round
-      ..color = BloomPalette.sage.withValues(alpha: 0.18);
+      ..color = BloomPalette.blush.withValues(alpha: 0.22);
     canvas.drawArc(rect, -math.pi / 2, fraction * 2 * math.pi, false, glow);
 
     canvas.drawArc(rect, -math.pi / 2, fraction * 2 * math.pi, false, arc);

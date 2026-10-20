@@ -6,6 +6,7 @@ import '../state/bloom_controller.dart';
 import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
 import 'confetti_celebration.dart';
+import 'motion.dart';
 
 /// Bottom sheet for the 30-Day Reset Challenge (start, track, complete, undo).
 Future<void> showChallengeSheet(BuildContext context) {
@@ -13,6 +14,8 @@ Future<void> showChallengeSheet(BuildContext context) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    barrierColor: BloomMotion.scrim,
+    sheetAnimationStyle: BloomMotion.sheet,
     builder: (_) => const ChallengeSheet(),
   );
 }
@@ -111,8 +114,8 @@ class _Body extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  BloomPalette.sageSoft,
-                  BloomPalette.sageSoft.withValues(alpha: 0.45),
+                  BloomPalette.orchidSoft,
+                  BloomPalette.orchidSoft.withValues(alpha: 0.45),
                 ],
               ),
               borderRadius: BorderRadius.circular(26),
@@ -120,7 +123,7 @@ class _Body extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("TODAY'S SMALL GOAL", style: BloomText.overline(color: BloomPalette.sageDeep)),
+                Text("TODAY'S SMALL GOAL", style: BloomText.overline(color: BloomPalette.orchidDeep)),
                 const SizedBox(height: 8),
                 Text(goal, style: BloomText.h3()),
               ],
@@ -144,18 +147,18 @@ class _Body extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isDone
-                      ? BloomPalette.sageDeep
+                      ? BloomPalette.orchidDeep
                       : isToday
                           ? BloomPalette.blushSoft
                           : BloomPalette.cream,
                   border: Border.all(
                     color: isDone
-                        ? BloomPalette.sageDeep
+                        ? BloomPalette.orchidDeep
                         : isToday
                             ? BloomPalette.blushDeep
                             : isFuture
                                 ? BloomPalette.creamDeep
-                                : BloomPalette.sage.withValues(alpha: 0.5),
+                                : BloomPalette.orchid.withValues(alpha: 0.5),
                     width: isToday ? 2 : 1.4,
                   ),
                 ),
@@ -172,7 +175,7 @@ class _Body extends StatelessWidget {
                                   : isFuture
                                       ? BloomPalette.inkSoft
                                           .withValues(alpha: 0.6)
-                                      : BloomPalette.sageDeep),
+                                      : BloomPalette.orchidDeep),
                         ),
                 ),
               );
@@ -192,12 +195,12 @@ class _Body extends StatelessWidget {
                       'Day $m',
                       style: BloomText.small(
                         color: controller.challengeDone.length >= m
-                            ? BloomPalette.sageDeep
+                            ? BloomPalette.orchidDeep
                             : BloomPalette.inkSoft,
                       ),
                     ),
                     backgroundColor: controller.challengeDone.length >= m
-                        ? BloomPalette.sageSoft
+                        ? BloomPalette.orchidSoft
                         : BloomPalette.cream,
                     side: BorderSide.none,
                     shape: RoundedRectangleBorder(
@@ -213,14 +216,14 @@ class _Body extends StatelessWidget {
             height: 56,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: doneToday ? null : BloomTheme.sageGradient,
-                color: doneToday ? BloomPalette.sageSoft : null,
+                gradient: doneToday ? null : BloomTheme.orchidGradient,
+                color: doneToday ? BloomPalette.orchidSoft : null,
                 borderRadius: BorderRadius.circular(26),
                 boxShadow: doneToday
                     ? null
                     : [
                         BoxShadow(
-                          color: BloomPalette.sageDeep.withValues(alpha: 0.4),
+                          color: BloomPalette.orchidDeep.withValues(alpha: 0.4),
                           blurRadius: 18,
                           offset: const Offset(0, 8),
                         ),
@@ -237,7 +240,7 @@ class _Body extends StatelessWidget {
                       doneToday ? 'Completed today ✓' : 'Complete day $day',
                       style: BloomText.button(
                         color: doneToday
-                            ? BloomPalette.sageDeep
+                            ? BloomPalette.orchidDeep
                             : Colors.white,
                       ),
                     ),
@@ -300,11 +303,11 @@ class _Intro extends StatelessWidget {
             height: 56,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: BloomTheme.sageGradient,
+                gradient: BloomTheme.orchidGradient,
                 borderRadius: BorderRadius.circular(26),
                 boxShadow: [
                   BoxShadow(
-                    color: BloomPalette.sageDeep.withValues(alpha: 0.4),
+                    color: BloomPalette.orchidDeep.withValues(alpha: 0.4),
                     blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),

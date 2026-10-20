@@ -55,9 +55,10 @@ class WeeklyChart extends StatelessWidget {
                                           Color(0xFFF6B4C7),
                                           BloomPalette.blushDeep,
                                         ]
-                                      : [
-                                          const Color(0xFFB3CDB8),
-                                          BloomPalette.sageDeep,
+                                      : const [
+                                          Color(0xFFF3B3C8),
+                                          Color(0xFFC08AC8),
+                                          BloomPalette.orchidDeep,
                                         ],
                                 ),
                           color: ratio <= 0.001

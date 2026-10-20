@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../data/bloom_content.dart';
 import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
+import '../widgets/motion.dart';
 
 /// 04 — Mood Journal: emoji check-in, private note, history view.
 class MoodScreen extends StatefulWidget {
@@ -51,7 +52,7 @@ class _MoodScreenState extends State<MoodScreen> {
           content: Text(
             'Saved 💗  Today you feel ${kMoods[index].label.toLowerCase()}.',
           ),
-          backgroundColor: BloomPalette.sageDeep,
+          backgroundColor: BloomPalette.orchidDeep,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
@@ -70,7 +71,7 @@ class _MoodScreenState extends State<MoodScreen> {
       bottom: false,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-        children: [
+        children: revealAll([
           Text('PRIVATE & JUST FOR YOU', style: BloomText.overline()),
           const SizedBox(height: 6),
           Text('Mood Journal', style: BloomText.h1()),
@@ -194,11 +195,11 @@ class _MoodScreenState extends State<MoodScreen> {
           // ---- Save ------------------------------------------------------
           AnimatedOpacity(
             duration: const Duration(milliseconds: 200),
-            opacity: _selected == null ? 0.55 : 1,
+            opacity: 1,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: _selected == null ? null : BloomTheme.blushGradient,
-                color: _selected == null ? BloomPalette.creamDeep : null,
+                color: _selected == null ? BloomPalette.blushSoft : null,
                 borderRadius: BorderRadius.circular(26),
                 boxShadow: _selected == null
                     ? null
@@ -221,8 +222,17 @@ class _MoodScreenState extends State<MoodScreen> {
                     height: 56,
                     child: Center(
                       child: Text(
-                        today == null ? 'Save my check-in' : 'Update my check-in',
-                        style: BloomText.button(),
+                        _selected == null
+                            ? 'Pick a mood to save'
+                            : today == null
+                                ? 'Save my check-in'
+                                : 'Update my check-in',
+                        // Disabled stays readable: rose on blush.
+                        style: BloomText.button(
+                          color: _selected == null
+                              ? BloomPalette.blushDeep.withValues(alpha: 0.75)
+                              : Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -315,7 +325,7 @@ class _MoodScreenState extends State<MoodScreen> {
                 ),
               );
             }),
-        ],
+        ]),
       ),
     );
   }
@@ -329,7 +339,7 @@ class _MoodStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     final now = DateTime.now();
     return Row(
       children: List.generate(7, (i) {

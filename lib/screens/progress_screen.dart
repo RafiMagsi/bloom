@@ -4,6 +4,7 @@ import '../data/bloom_content.dart';
 import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
 import '../widgets/challenge_sheet.dart';
+import '../widgets/motion.dart';
 import '../widgets/share_progress_card.dart';
 import '../widgets/weekly_chart.dart';
 
@@ -12,7 +13,7 @@ import '../widgets/weekly_chart.dart';
 class ProgressScreen extends StatelessWidget {
   const ProgressScreen({super.key});
 
-  String _weekLetter(DateTime day) => 'SMTWTFS'[day.weekday - 1];
+  String _weekLetter(DateTime day) => 'MTWTFSS'[day.weekday - 1];
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +30,7 @@ class ProgressScreen extends StatelessWidget {
       bottom: false,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-        children: [
+        children: revealAll([
           Text('LOOK HOW FAR YOU HAVE COME', style: BloomText.overline()),
           const SizedBox(height: 6),
           Text('My Progress', style: BloomText.h1()),
@@ -40,19 +41,19 @@ class ProgressScreen extends StatelessWidget {
             children: [
               _StatCard(
                 emoji: '🔥',
-                value: '${controller.currentStreak}',
+                value: controller.currentStreak,
                 label: 'day streak',
               ),
               const SizedBox(width: 10),
               _StatCard(
                 emoji: '✅',
-                value: '${controller.totalCompletions}',
+                value: controller.totalCompletions,
                 label: 'check-ins',
               ),
               const SizedBox(width: 10),
               _StatCard(
                 emoji: '💗',
-                value: '${controller.moods.length}',
+                value: controller.moods.length,
                 label: 'mood entries',
               ),
             ],
@@ -87,13 +88,13 @@ class ProgressScreen extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: BloomPalette.sageSoft,
+                        color: BloomPalette.orchidSoft,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
                         '$consistency% consistent',
                         style: BloomText.body(12.5,
-                            wght: 700, color: BloomPalette.sageDeep),
+                            wght: 700, color: BloomPalette.orchidDeep),
                       ),
                     ),
                   ],
@@ -117,11 +118,11 @@ class ProgressScreen extends StatelessWidget {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFFEFF6F0), Color(0xFFE1EEE4)],
+                colors: [Color(0xFFF8F0FB), Color(0xFFEFE2F6)],
               ),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: BloomPalette.sage.withValues(alpha: 0.45),
+                color: BloomPalette.orchid.withValues(alpha: 0.45),
               ),
             ),
             child: Column(
@@ -139,7 +140,7 @@ class ProgressScreen extends StatelessWidget {
                       controller.challengeActive
                           ? 'Day ${controller.challengeDay}'
                           : 'Not started',
-                      style: BloomText.small(color: BloomPalette.sageDeep),
+                      style: BloomText.small(color: BloomPalette.orchidDeep),
                     ),
                   ],
                 ),
@@ -159,7 +160,7 @@ class ProgressScreen extends StatelessWidget {
                       minHeight: 9,
                       backgroundColor: Colors.white,
                       valueColor: const AlwaysStoppedAnimation(
-                        BloomPalette.sageDeep,
+                        BloomPalette.orchidDeep,
                       ),
                     ),
                   ),
@@ -167,7 +168,7 @@ class ProgressScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   '${controller.challengeDone.length} of 30 days complete',
-                  style: BloomText.caption(color: BloomPalette.sageDeep),
+                  style: BloomText.caption(color: BloomPalette.orchidDeep),
                 ),
                 const SizedBox(height: 14),
                 Wrap(
@@ -182,7 +183,7 @@ class ProgressScreen extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: reached
-                            ? BloomPalette.sageDeep
+                            ? BloomPalette.orchidDeep
                             : Colors.white.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -203,9 +204,9 @@ class ProgressScreen extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () => showChallengeSheet(context),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: BloomPalette.sageDeep,
+                      foregroundColor: BloomPalette.orchidDeep,
                       side: BorderSide(
-                        color: BloomPalette.sageDeep.withValues(alpha: 0.6),
+                        color: BloomPalette.orchidDeep.withValues(alpha: 0.6),
                         width: 1.5,
                       ),
                       shape: RoundedRectangleBorder(
@@ -216,7 +217,7 @@ class ProgressScreen extends StatelessWidget {
                       controller.challengeActive
                           ? 'Open my challenge'
                           : 'Start the challenge',
-                      style: BloomText.button(color: BloomPalette.sageDeep),
+                      style: BloomText.button(color: BloomPalette.orchidDeep),
                     ),
                   ),
                 ),
@@ -299,7 +300,7 @@ class ProgressScreen extends StatelessWidget {
                           minHeight: 5,
                           backgroundColor: BloomPalette.creamDeep,
                           valueColor: const AlwaysStoppedAnimation(
-                            BloomPalette.sageDeep,
+                            BloomPalette.orchidDeep,
                           ),
                         ),
                       ),
@@ -316,7 +317,7 @@ class ProgressScreen extends StatelessWidget {
           const SizedBox(height: 12),
           const ShareProgressCard(),
           const SizedBox(height: 20),
-        ],
+        ]),
       ),
     );
   }
@@ -330,7 +331,7 @@ class _StatCard extends StatelessWidget {
   });
 
   final String emoji;
-  final String value;
+  final int value;
   final String label;
 
   @override
@@ -356,7 +357,7 @@ class _StatCard extends StatelessWidget {
           children: [
             Text(emoji, style: const TextStyle(fontSize: 20)),
             const SizedBox(height: 6),
-            Text(value, style: BloomText.display(28, wght: 700)),
+            CountUp(value: value, style: BloomText.display(28, wght: 700)),
             Text(
               label,
               textAlign: TextAlign.center,

@@ -196,8 +196,8 @@ List<Map<String, dynamic>> seedHabits() => [
 List<Color> confettiColors() => const [
       BloomPalette.blush,
       BloomPalette.blushDeep,
-      BloomPalette.sage,
-      BloomPalette.sageDeep,
+      BloomPalette.orchid,
+      BloomPalette.orchidDeep,
       BloomPalette.honey,
       Colors.white,
     ];

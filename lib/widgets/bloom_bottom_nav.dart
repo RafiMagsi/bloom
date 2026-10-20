@@ -48,51 +48,78 @@ class BloomBottomNav extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: List.generate(labels.length, (i) {
-          final active = i == index;
-          return Expanded(
-            child: Semantics(
-              button: true,
-              selected: active,
-              label: labels[i],
-              child: InkWell(
-                key: Key('nav-${labels[i].toLowerCase()}'),
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => onChanged(i),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOut,
+      child: Stack(
+        children: [
+          // One blush pill glides to the active tab.
+          Positioned.fill(
+            child: AnimatedAlign(
+              alignment: Alignment(-1 + 2 * index / (labels.length - 1), 0),
+              duration: const Duration(milliseconds: 420),
+              curve: Curves.easeOutBack,
+              child: FractionallySizedBox(
+                widthFactor: 1 / labels.length,
+                child: Container(
                   height: 52,
                   decoration: BoxDecoration(
-                    color: active ? BloomPalette.blushSoft : Colors.transparent,
+                    color: BloomPalette.blushSoft,
                     borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        active ? activeIcons[i] : icons[i],
-                        size: 22,
-                        color:
-                            active ? BloomPalette.blushDeep : BloomPalette.inkSoft,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        labels[i],
-                        style: BloomText.body(10.5,
-                            wght: 700,
-                            color: active
-                                ? BloomPalette.blushDeep
-                                : BloomPalette.inkSoft),
-                      ),
-                    ],
                   ),
                 ),
               ),
             ),
-          );
-        }),
+          ),
+          Row(
+            children: List.generate(labels.length, (i) {
+              final active = i == index;
+              return Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: active,
+                  label: labels[i],
+                  child: InkWell(
+                    key: Key('nav-${labels[i].toLowerCase()}'),
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => onChanged(i),
+                    child: SizedBox(
+                      height: 52,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AnimatedScale(
+                            scale: active ? 1.12 : 1,
+                            duration: const Duration(milliseconds: 380),
+                            curve: Curves.easeOutBack,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              child: Icon(
+                                active ? activeIcons[i] : icons[i],
+                                key: ValueKey(active),
+                                size: 22,
+                                color: active
+                                    ? BloomPalette.blushDeep
+                                    : BloomPalette.inkSoft,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 260),
+                            style: BloomText.body(10.5,
+                                wght: 700,
+                                color: active
+                                    ? BloomPalette.blushDeep
+                                    : BloomPalette.inkSoft),
+                            child: Text(labels[i]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }

@@ -8,6 +8,9 @@ import '../services/storage_service.dart';
 
 /// Single source of truth for the app. Every mutation persists locally (Hive)
 /// and notifies listeners — no backend, no login (Bloom.pdf §3).
+///
+/// Updates are optimistic: state changes and listeners fire immediately so
+/// animations respond on the same frame as the tap; the disk write follows.
 class BloomController extends ChangeNotifier {
   BloomController() {
     _load();
@@ -55,14 +58,14 @@ class BloomController extends ChangeNotifier {
 
   Future<void> completeOnboarding() async {
     _onboardingDone = true;
-    await StorageService.setOnboardingDone(true);
     notifyListeners();
+    await StorageService.setOnboardingDone(true);
   }
 
   Future<void> setUserName(String name) async {
     _userName = name;
-    await StorageService.setUserName(name);
     notifyListeners();
+    await StorageService.setUserName(name);
   }
 
   Future<void> setMorningReminder(bool value) async {
@@ -115,8 +118,8 @@ class BloomController extends ChangeNotifier {
       ids.add(habit.id);
     }
     _completions[_key(now)] = ids;
-    await StorageService.setCompletedIds(now, ids);
     notifyListeners();
+    await StorageService.setCompletedIds(now, ids);
   }
 
   Future<void> addHabit({
@@ -130,22 +133,22 @@ class BloomController extends ChangeNotifier {
       emoji: emoji,
       routine: routine,
     ));
-    await StorageService.saveHabits(_habits);
     notifyListeners();
+    await StorageService.saveHabits(_habits);
   }
 
   Future<void> updateHabit(Habit habit) async {
     final index = _habits.indexWhere((h) => h.id == habit.id);
     if (index == -1) return;
     _habits[index] = habit;
-    await StorageService.saveHabits(_habits);
     notifyListeners();
+    await StorageService.saveHabits(_habits);
   }
 
   Future<void> removeHabit(String habitId) async {
     _habits.removeWhere((h) => h.id == habitId);
-    await StorageService.saveHabits(_habits);
     notifyListeners();
+    await StorageService.saveHabits(_habits);
   }
 
   // ---- Streak, totals, weekly chart ---------------------------------------
@@ -206,11 +209,11 @@ class BloomController extends ChangeNotifier {
       moodIndex: moodIndex,
       note: note.trim(),
     );
-    await StorageService.saveMood(entry);
     _moods.removeWhere((e) => _key(e.date) == _key(entry.date));
     _moods.insert(0, entry);
     _moods.sort((a, b) => b.date.compareTo(a.date));
     notifyListeners();
+    await StorageService.saveMood(entry);
   }
 
   // ---- 30-Day Reset Challenge ----------------------------------------------
@@ -241,8 +244,8 @@ class BloomController extends ChangeNotifier {
     final now = DateTime.now();
     _challengeStart = now;
     _challengeDone = <int>[];
-    await StorageService.startChallenge(now);
     notifyListeners();
+    await StorageService.startChallenge(now);
   }
 
   /// Marks today's challenge goal complete; returns newly unlocked
@@ -255,18 +258,20 @@ class BloomController extends ChangeNotifier {
     final before = _unlockedIds();
     _challengeDone.add(day);
     _challengeDone.sort();
-    await StorageService.setChallengeDone(_challengeDone);
+    final unlocked = _newUnlocks(before);
     notifyListeners();
-    return _newUnlocks(before);
+    await StorageService.setChallengeDone(List.of(_challengeDone));
+    return unlocked;
   }
 
   Future<List<Achievement>> undoChallengeDay(int day) async {
     if (!_challengeDone.contains(day)) return const <Achievement>[];
     final before = _unlockedIds();
     _challengeDone.remove(day);
-    await StorageService.setChallengeDone(_challengeDone);
+    final unlocked = _newUnlocks(before);
     notifyListeners();
-    return _newUnlocks(before);
+    await StorageService.setChallengeDone(List.of(_challengeDone));
+    return unlocked;
   }
 
   // ---- Achievements ---------------------------------------------------------

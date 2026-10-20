@@ -35,11 +35,11 @@ class HabitTile extends StatelessWidget {
         curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: done ? BloomPalette.sageSoft : BloomPalette.card,
+          color: done ? BloomPalette.orchidSoft : BloomPalette.card,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: done
-                ? BloomPalette.sage.withValues(alpha: 0.45)
+                ? BloomPalette.orchid.withValues(alpha: 0.45)
                 : BloomPalette.ink.withValues(alpha: 0.05),
           ),
           boxShadow: done
@@ -64,7 +64,7 @@ class HabitTile extends StatelessWidget {
                         color: BloomPalette.inkSoft,
                       ).copyWith(
                         decoration: TextDecoration.lineThrough,
-                        decorationColor: BloomPalette.sageDeep,
+                        decorationColor: BloomPalette.orchidDeep,
                         decorationThickness: 1.6,
                       )
                     : BloomText.cardTitle(),
@@ -103,10 +103,10 @@ class HabitTile extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: done ? BloomPalette.sageDeep : Colors.transparent,
+                  color: done ? BloomPalette.orchidDeep : Colors.transparent,
                   border: Border.all(
                     color: done
-                        ? BloomPalette.sageDeep
+                        ? BloomPalette.orchidDeep
                         : BloomPalette.blush.withValues(alpha: 0.55),
                     width: 1.7,
                   ),

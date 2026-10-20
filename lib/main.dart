@@ -10,6 +10,7 @@ import 'theme/bloom_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await StorageService.init();
+  await StorageService.seedDemoMonthIfNeeded();
   runApp(BloomApp(controller: BloomController()));
 }
 

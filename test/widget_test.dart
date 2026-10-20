@@ -1,18 +1,34 @@
 import 'dart:io';
 
 import 'package:bloom/main.dart';
+import 'package:bloom/models/mood_entry.dart';
+import 'package:bloom/screens/progress_screen.dart';
 import 'package:bloom/services/storage_service.dart';
 import 'package:bloom/state/bloom_controller.dart';
 import 'package:bloom/widgets/challenge_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'support/fake_video_player.dart';
+
+/// Loads a bundled font so layouts are measured with real glyphs, not the
+/// test framework's wide placeholder font.
+Future<void> _loadFont(String family, String path) async {
+  final loader = FontLoader(family)
+    ..addFont(Future.value(ByteData.sublistView(File(path).readAsBytesSync())));
+  await loader.load();
+}
 
 void main() {
   late Directory tempDir;
 
   setUpAll(() async {
+    FakeVideoPlayerPlatform.install();
     tempDir = await Directory.systemTemp.createTemp('bloom_test');
     await StorageService.init(path: tempDir.path);
+    await _loadFont('PlayfairDisplay', 'assets/fonts/PlayfairDisplay.ttf');
+    await _loadFont('Nunito', 'assets/fonts/Nunito.ttf');
   });
 
   setUp(() async {
@@ -28,6 +44,10 @@ void main() {
   });
 
   Future<BloomController> pumpApp(WidgetTester tester) async {
+    // A real phone viewport (iPhone 14-ish), not the 800×600 default.
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     final controller = BloomController();
     await tester.pumpWidget(BloomApp(controller: controller));
     // Let the entrance animation get going (no pumpAndSettle: ambient loops).
@@ -40,7 +60,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('start-reset')));
     await tester.pump(); // route push begins
-    await tester.pump(const Duration(milliseconds: 600));
+    // Let the bloom-reveal transition fully open.
+    await tester.pump(const Duration(milliseconds: 1200));
   }
 
   testWidgets('01 Welcome shows the brand and starts the reset',
@@ -52,7 +73,7 @@ void main() {
       find.text('Small habits. Softer days. A better you.'),
       findsOneWidget,
     );
-    expect(find.text('Start Your Reset'), findsOneWidget);
+    expect(find.text('Get Started'), findsOneWidget);
 
     await startFromWelcome(tester);
 
@@ -102,12 +123,18 @@ void main() {
     expect(find.text('My Routine'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('add-habit')));
-    await tester.pump(const Duration(milliseconds: 450));
+    // Sheet rises (460ms) while its content cascades in.
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('New habit'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'Glow walk');
     await tester.pump(const Duration(milliseconds: 120));
+    await tester.ensureVisible(find.text('Add habit'));
+    await tester.pump(const Duration(milliseconds: 120));
     await tester.tap(find.text('Add habit'));
+    // Let the sheet finish sliding away.
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Glow walk'), findsOneWidget);
@@ -162,26 +189,90 @@ void main() {
     expect(find.text('This week'), findsOneWidget);
     expect(find.textContaining('% consistent'), findsOneWidget);
     expect(find.text('30-Day Reset Challenge'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('First Bloom'),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(ProgressScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('First Bloom'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Share my progress'),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(ProgressScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('Share my progress'), findsOneWidget);
 
     // Start and complete day 1 of the 30-day reset.
-    await tester.ensureVisible(find.text('Start the challenge'));
+    await tester.scrollUntilVisible(
+      find.text('Start the challenge'),
+      -300,
+      scrollable: find
+          .descendant(
+            of: find.byType(ProgressScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.pump(const Duration(milliseconds: 120));
     await tester.tap(find.text('Start the challenge'));
     await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(ChallengeSheet), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const Key('start-challenge')));
+    await tester.pump(const Duration(milliseconds: 120));
     await tester.tap(find.byKey(const Key('start-challenge')));
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('Day 1 of 30'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const Key('complete-challenge-day')));
+    await tester.pump(const Duration(milliseconds: 120));
     await tester.tap(find.byKey(const Key('complete-challenge-day')));
     await tester.pump(const Duration(milliseconds: 700));
     expect(find.text('Completed today ✓'), findsOneWidget);
     expect(StorageService.challengeDone, contains(1));
 
     await tester.pumpWidget(const SizedBox());
+  });
+
+  test('demo month seeds a realistic office-girl history once', () async {
+    await Hive.box('bloom_settings').delete('demoSeeded');
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    await StorageService.saveMood(
+      MoodEntry(date: yesterday, moodIndex: 0, note: 'my own entry'),
+    );
+
+    await StorageService.seedDemoMonthIfNeeded();
+    final c = BloomController();
+
+    expect(c.habits, hasLength(8));
+    expect(c.habits.map((h) => h.name), contains('Pack a healthy lunch'));
+    expect(c.todayDoneCount, 0, reason: 'today is left for the user');
+    expect(c.currentStreak, inInclusiveRange(7, 16));
+    expect(c.totalCompletions, greaterThan(100));
+    expect(c.moods.length, inInclusiveRange(20, 30));
+    expect(c.todayMood, isNull);
+    expect(c.challengeDay, 23);
+    expect(c.challengeDone, hasLength(20));
+    // Existing data is never overwritten.
+    expect(
+      c.moods.firstWhere((m) => m.date.day == yesterday.day).note,
+      'my own entry',
+    );
+
+    // Second call is a no-op.
+    await StorageService.seedDemoMonthIfNeeded();
+    expect(BloomController().moods, hasLength(c.moods.length));
   });
 
   test('data persists across app restarts (Hive)', () async {

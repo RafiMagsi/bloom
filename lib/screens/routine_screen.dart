@@ -5,6 +5,7 @@ import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
 import '../widgets/add_habit_sheet.dart';
 import '../widgets/habit_tile.dart';
+import '../widgets/motion.dart';
 
 /// 03 — My Routine: add, edit, complete habits; morning & evening rituals.
 class RoutineScreen extends StatefulWidget {
@@ -30,7 +31,7 @@ class _RoutineScreenState extends State<RoutineScreen> {
       bottom: false,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-        children: [
+        children: revealAll([
           Text('MY GLOW-UP ROUTINE', style: BloomText.overline()),
           const SizedBox(height: 6),
           Text('My Routine', style: BloomText.h1()),
@@ -42,95 +43,67 @@ class _RoutineScreenState extends State<RoutineScreen> {
           const SizedBox(height: 18),
 
           // Segmented morning / evening control.
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: BloomPalette.creamDeep,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
-              children: List.generate(2, (i) {
-                final active = _segment == i;
-                return Expanded(
-                  child: GestureDetector(
-                    key: Key('routine-segment-$i'),
-                    onTap: () => setState(() => _segment = i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 240),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      decoration: BoxDecoration(
-                        color: active ? BloomPalette.card : Colors.transparent,
-                        borderRadius: BorderRadius.circular(19),
-                        boxShadow: active
-                            ? [
-                                BoxShadow(
-                                  color:
-                                      BloomPalette.ink.withValues(alpha: 0.07),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Text(
-                        i == 0 ? '☀️  Morning' : '🌙  Evening',
-                        textAlign: TextAlign.center,
-                        style: BloomText.body(14.5,
-                            wght: 700,
-                            color: active
-                                ? BloomPalette.ink
-                                : BloomPalette.inkSoft),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
+          BloomSegmented(
+            labels: const ['☀️  Morning', '🌙  Evening'],
+            index: _segment,
+            keyPrefix: 'routine-segment-',
+            verticalPadding: 13,
+            onChanged: (i) => setState(() => _segment = i),
           ),
           const SizedBox(height: 16),
 
-          if (habits.isEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 34, horizontal: 22),
-              decoration: BoxDecoration(
-                color: BloomPalette.card,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Column(
-                children: [
-                  const Text('🌷', style: TextStyle(fontSize: 42)),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Your $_segmentName routine is a blank canvas',
-                    style: BloomText.cardTitle(),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Add one small habit you will actually enjoy.',
-                    style: BloomText.caption(),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            )
-          else
-            ...habits.map(
-              (h) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: HabitTile(
-                  habit: h,
-                  done: controller.isDone(h.id),
-                  onTap: () => controller.toggleHabit(h),
-                  onEdit: () => showAddHabitSheet(
-                    context,
-                    controller: controller,
-                    routine: routine,
-                    editing: h,
-                  ),
-                ),
-              ),
+          SlideSwitcher(
+            direction: _segment == 0 ? -1 : 1,
+            child: Column(
+              key: ValueKey(_segment),
+              children: habits.isEmpty
+                  ? [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 34, horizontal: 22),
+                        decoration: BoxDecoration(
+                          color: BloomPalette.card,
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text('🌷', style: TextStyle(fontSize: 42)),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Your $_segmentName routine is a blank canvas',
+                              style: BloomText.cardTitle(),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Add one small habit you will actually enjoy.',
+                              style: BloomText.caption(),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ]
+                  : [
+                      for (final h in habits)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: HabitTile(
+                            habit: h,
+                            done: controller.isDone(h.id),
+                            onTap: () => controller.toggleHabit(h),
+                            onEdit: () => showAddHabitSheet(
+                              context,
+                              controller: controller,
+                              routine: routine,
+                              editing: h,
+                            ),
+                          ),
+                        ),
+                    ],
             ),
+          ),
           const SizedBox(height: 8),
 
           // Add habit button.
@@ -186,7 +159,7 @@ class _RoutineScreenState extends State<RoutineScreen> {
               ],
             ),
           ),
-        ],
+        ]),
       ),
     );
   }
