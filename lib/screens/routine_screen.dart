@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
+import 'habit_detail_screen.dart';
 import '../widgets/add_habit_sheet.dart';
 import '../widgets/habit_tile.dart';
+import '../widgets/habit_glyph.dart';
 import '../widgets/motion.dart';
 
 /// 03 — My Routine: add, edit, complete habits; morning & evening rituals.
@@ -44,7 +46,8 @@ class _RoutineScreenState extends State<RoutineScreen> {
 
           // Segmented morning / evening control.
           BloomSegmented(
-            labels: const ['☀️  Morning', '🌙  Evening'],
+            labels: const ['Morning', 'Evening'],
+            icons: const [Icons.wb_sunny_rounded, Icons.nightlight_round],
             index: _segment,
             keyPrefix: 'routine-segment-',
             verticalPadding: 13,
@@ -93,6 +96,7 @@ class _RoutineScreenState extends State<RoutineScreen> {
                             habit: h,
                             done: controller.isDone(h.id),
                             onTap: () => controller.toggleHabit(h),
+                            onOpen: () => openHabitDetail(context, h),
                             onEdit: () => showAddHabitSheet(
                               context,
                               controller: controller,
@@ -148,7 +152,11 @@ class _RoutineScreenState extends State<RoutineScreen> {
             ),
             child: Row(
               children: [
-                const Text('💡', style: TextStyle(fontSize: 20)),
+                const IconTile(
+                  icon: Icons.lightbulb_rounded,
+                  tint: Color(0xFFE5A93A),
+                  size: 36,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(

@@ -100,9 +100,13 @@ class BloomSegmented extends StatelessWidget {
     required this.onChanged,
     this.keyPrefix,
     this.verticalPadding = 12,
+    this.icons,
   });
 
   final List<String> labels;
+
+  /// Optional leading icon per option.
+  final List<IconData>? icons;
   final int index;
   final ValueChanged<int> onChanged;
 
@@ -159,14 +163,35 @@ class BloomSegmented extends StatelessWidget {
                   },
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: verticalPadding),
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 260),
-                      style: BloomText.body(
-                        14.5,
-                        wght: 700,
-                        color: active ? BloomPalette.ink : BloomPalette.inkSoft,
-                      ),
-                      child: Text(labels[i], textAlign: TextAlign.center),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (icons != null) ...[
+                          AnimatedScale(
+                            scale: active ? 1.1 : 1,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutBack,
+                            child: Icon(
+                              icons![i],
+                              size: 18,
+                              color: active
+                                  ? BloomPalette.blushDeep
+                                  : BloomPalette.inkSoft,
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                        ],
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 260),
+                          style: BloomText.body(
+                            14.5,
+                            wght: 700,
+                            color:
+                                active ? BloomPalette.ink : BloomPalette.inkSoft,
+                          ),
+                          child: Text(labels[i], textAlign: TextAlign.center),
+                        ),
+                      ],
                     ),
                   ),
                 ),

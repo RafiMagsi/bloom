@@ -1,8 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:bloom/data/mood_insights.dart';
 import 'package:bloom/main.dart';
 import 'package:bloom/models/mood_entry.dart';
+import 'package:bloom/screens/habit_detail_screen.dart';
 import 'package:bloom/screens/progress_screen.dart';
+import 'package:bloom/state/bloom_clock.dart';
+import 'package:bloom/widgets/habit_glyph.dart';
 import 'package:bloom/services/storage_service.dart';
 import 'package:bloom/state/bloom_controller.dart';
 import 'package:bloom/widgets/challenge_sheet.dart';
@@ -59,6 +64,11 @@ void main() {
     await tester.ensureVisible(find.byKey(const Key('start-reset')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('start-reset')));
+    // First launch asks her name on a frosted card.
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.enterText(find.byKey(const Key('name-field')), 'Ava');
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('name-continue')));
     await tester.pump(); // route push begins
     // Let the bloom-reveal transition fully open.
     await tester.pump(const Duration(milliseconds: 1200));
@@ -80,6 +90,9 @@ void main() {
     expect(find.byKey(const Key('home-greeting')), findsOneWidget);
     expect(find.byKey(const Key('progress-ring')), findsOneWidget);
     expect(StorageService.onboardingDone, isTrue);
+    // The name she typed is saved and greets her on Home.
+    expect(StorageService.userName, 'Ava');
+    expect(find.textContaining('Ava'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
   });
@@ -109,6 +122,55 @@ void main() {
     await tester.pump(const Duration(milliseconds: 450));
     expect(find.text('0%'), findsOneWidget);
     expect(find.byKey(const Key('habit-done-seed-skincare-am')), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('02b Finishing every ritual celebrates the day', (tester) async {
+    final controller = await pumpApp(tester);
+    await startFromWelcome(tester);
+
+    // Tick everything; the last one blooms the day.
+    for (final habit in controller.habits) {
+      unawaited(controller.toggleHabit(habit));
+    }
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.text('You bloomed today, Ava'), findsOneWidget);
+    expect(find.text('100%'), findsOneWidget);
+    expect(find.text('bloomed ✨'), findsOneWidget);
+
+    // It settles away on its own.
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('You bloomed today, Ava'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('02c Tapping a habit icon opens its detail page', (tester) async {
+    await pumpApp(tester);
+    await startFromWelcome(tester);
+
+    await tester.tap(find.descendant(
+      of: find.byKey(const Key('habit-seed-skincare-am')),
+      matching: find.byType(HabitGlyph),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.byType(HabitDetailScreen), findsOneWidget);
+    expect(find.text('Morning ritual'), findsOneWidget);
+    expect(find.text('Last five weeks'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('habit-detail-toggle')));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Done today — lovely'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(HabitDetailScreen), findsNothing);
+    expect(find.byKey(const Key('habit-done-seed-skincare-am')), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
   });
@@ -186,8 +248,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('My Progress'), findsOneWidget);
+    expect(find.text('Your glow month'), findsOneWidget);
     expect(find.text('This week'), findsOneWidget);
     expect(find.textContaining('% consistent'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('30-Day Reset Challenge'),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(ProgressScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('30-Day Reset Challenge'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('First Bloom'),
@@ -273,6 +346,43 @@ void main() {
     // Second call is a no-op.
     await StorageService.seedDemoMonthIfNeeded();
     expect(BloomController().moods, hasLength(c.moods.length));
+  });
+
+  test('demo month yields honest mood insights + calendar data', () async {
+    await Hive.box('bloom_settings').delete('demoSeeded');
+    await StorageService.seedDemoMonthIfNeeded();
+    final c = BloomController();
+
+    final insights = c.moodInsights.map((i) => i.text).toList();
+    expect(insights.first, contains('most frequent mood'));
+    expect(insights, contains(contains('You glow brightest on')));
+    // The crunch week (few rituals, heavy moods) makes this one true.
+    expect(insights, contains(contains('% brighter')));
+
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    expect(c.completionOn(yesterday), greaterThan(0));
+    expect(c.completionOn(DateTime.now()), 0);
+  });
+
+  test('mood insights stay quiet without enough check-ins', () {
+    final now = DateTime.now();
+    final insights = computeMoodInsights(
+      moods: [
+        for (var i = 1; i <= 3; i++)
+          MoodEntry(date: now.subtract(Duration(days: i)), moodIndex: 1),
+      ],
+      completionOn: (_) => 1,
+      today: now,
+    );
+    expect(insights, isEmpty);
+  });
+
+  test('evening atmosphere follows the clock', () {
+    addTearDown(() => BloomClock.now = DateTime.now);
+    BloomClock.now = () => DateTime(2026, 10, 20, 21);
+    expect(BloomClock.isEvening, isTrue);
+    BloomClock.now = () => DateTime(2026, 10, 20, 9);
+    expect(BloomClock.isEvening, isFalse);
   });
 
   test('data persists across app restarts (Hive)', () async {

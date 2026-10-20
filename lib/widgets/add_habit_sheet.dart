@@ -5,6 +5,7 @@ import '../data/bloom_content.dart';
 import '../models/habit.dart';
 import '../state/bloom_controller.dart';
 import '../theme/bloom_theme.dart';
+import 'habit_glyph.dart';
 import 'motion.dart';
 
 /// Bottom sheet to add or edit a habit in a routine.
@@ -177,7 +178,7 @@ class _AddHabitSheetState extends State<_AddHabitSheet> {
                   children: _presets
                       .map(
                         (p) => ActionChip(
-                          avatar: Text(p.emoji),
+                          avatar: HabitGlyph(emoji: p.emoji, size: 24),
                           label: Text(
                             p.name,
                             style: BloomText.small(
@@ -202,7 +203,7 @@ class _AddHabitSheetState extends State<_AddHabitSheet> {
                       .toList(),
                 ),
                 const SizedBox(height: 18),
-                Text('CHOOSE AN EMOJI', style: BloomText.overline()),
+                Text('CHOOSE AN ICON', style: BloomText.overline()),
                 const SizedBox(height: 10),
                 SizedBox(
                   height: 46,
@@ -229,17 +230,8 @@ class _AddHabitSheetState extends State<_AddHabitSheet> {
                               width: 1.8,
                             ),
                           ),
-                          child: Center(
-                            child: Text(
-                              emojis[i],
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: selected
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                          ),
+                          padding: const EdgeInsets.all(3),
+                          child: HabitGlyph(emoji: emojis[i], size: 36),
                         ),
                       );
                     },

@@ -291,3 +291,238 @@ class _MedallionPainter extends CustomPainter {
   @override
   bool shouldRepaint(_MedallionPainter oldDelegate) => false;
 }
+
+/// The Bloom brand mark — a pearly five-petal bloom with a golden heart,
+/// optionally on the rose → orchid icon tile. Used for the app icon, the
+/// launch screen and in-app brand moments.
+class BloomMark extends StatelessWidget {
+  const BloomMark({
+    super.key,
+    this.size = 120,
+    this.tile = false,
+    this.cornerRadius = 0,
+    this.inset = 0,
+    this.markScale = 1,
+    this.flower = true,
+  });
+
+  final double size;
+
+  /// Paint the bloom itself (off for an icon's background layer).
+  final bool flower;
+
+  /// Paint the gradient tile behind the flower.
+  final bool tile;
+
+  /// Tile corner radius as a fraction of the tile size (0 = square).
+  final double cornerRadius;
+
+  /// Empty margin around the tile, as a fraction of [size] (macOS style).
+  final double inset;
+
+  /// Flower size relative to the default.
+  final double markScale;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _BloomMarkPainter(
+        tile: tile,
+        cornerRadius: cornerRadius,
+        inset: inset,
+        markScale: markScale,
+        flower: flower,
+      ),
+    );
+  }
+}
+
+class _BloomMarkPainter extends CustomPainter {
+  const _BloomMarkPainter({
+    required this.tile,
+    required this.cornerRadius,
+    required this.inset,
+    required this.markScale,
+    required this.flower,
+  });
+
+  final bool tile;
+  final double cornerRadius;
+  final double inset;
+  final double markScale;
+  final bool flower;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width / 100;
+    canvas.scale(s);
+    final box = Rect.fromLTWH(inset * 100, inset * 100, 100 - inset * 200,
+        100 - inset * 200);
+    final rrect = RRect.fromRectAndRadius(
+      box,
+      Radius.circular(box.width * cornerRadius),
+    );
+
+    if (tile) {
+      if (inset > 0) {
+        canvas.drawRRect(
+          rrect.shift(const Offset(0, 1.2)),
+          Paint()
+            ..color = const Color(0xFF6B2A4A).withValues(alpha: 0.28)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.2),
+        );
+      }
+      canvas.save();
+      canvas.clipRRect(rrect);
+      canvas.drawRect(
+        box,
+        Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFCD5E0), Color(0xFFEC8FAE), Color(0xFFB66AA8)],
+            stops: [0.0, 0.55, 1.0],
+          ).createShader(box),
+      );
+      // Soft light from the top-left.
+      canvas.drawCircle(
+        box.topLeft + Offset(box.width * 0.22, box.height * 0.18),
+        box.width * 0.62,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              Colors.white.withValues(alpha: 0.55),
+              Colors.white.withValues(alpha: 0),
+            ],
+          ).createShader(Rect.fromCircle(
+            center: box.topLeft + Offset(box.width * 0.22, box.height * 0.18),
+            radius: box.width * 0.62,
+          )),
+      );
+      final sparkle = Paint()..color = Colors.white.withValues(alpha: 0.95);
+      _star(canvas, box.center + Offset(box.width * 0.3, -box.height * 0.3),
+          box.width * 0.045, sparkle);
+      _star(canvas, box.center + Offset(box.width * 0.37, -box.height * 0.16),
+          box.width * 0.022, sparkle);
+      _star(canvas, box.center + Offset(-box.width * 0.33, box.height * 0.31),
+          box.width * 0.028, sparkle..color = Colors.white.withValues(alpha: 0.8));
+      canvas.restore();
+    }
+    if (!flower) return;
+
+    final c = box.center + Offset(0, box.height * 0.015);
+    final r = box.width * 0.3 * markScale;
+
+    // Shadow beneath the bloom for depth.
+    canvas.drawCircle(
+      c + Offset(0, r * 0.1),
+      r * 0.95,
+      Paint()
+        ..color = const Color(0xFF8E2F5E).withValues(alpha: tile ? 0.28 : 0.18)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.14),
+    );
+
+    // Outer pearly petals.
+    for (var i = 0; i < 5; i++) {
+      _petal(
+        canvas,
+        c,
+        angle: i * 2 * math.pi / 5,
+        length: r,
+        width: r * 0.86,
+        base: const Color(0xFFFFE3EC),
+        tip: Colors.white,
+      );
+    }
+    // Inner blush petals, offset by half a step.
+    for (var i = 0; i < 5; i++) {
+      _petal(
+        canvas,
+        c,
+        angle: i * 2 * math.pi / 5 + math.pi / 5,
+        length: r * 0.6,
+        width: r * 0.55,
+        base: const Color(0xFFF07FA2),
+        tip: const Color(0xFFFFC9D8),
+      );
+    }
+    // Golden heart.
+    canvas.drawCircle(
+      c,
+      r * 0.2,
+      Paint()
+        ..shader = const RadialGradient(
+          center: Alignment(-0.3, -0.35),
+          colors: [Color(0xFFFFF1CF), Color(0xFFF4C27A), Color(0xFFE29A52)],
+          stops: [0.0, 0.6, 1.0],
+        ).createShader(Rect.fromCircle(center: c, radius: r * 0.2)),
+    );
+    canvas.drawCircle(
+      c - Offset(r * 0.06, r * 0.07),
+      r * 0.055,
+      Paint()..color = Colors.white.withValues(alpha: 0.9),
+    );
+  }
+
+  void _petal(
+    Canvas canvas,
+    Offset center, {
+    required double angle,
+    required double length,
+    required double width,
+    required Color base,
+    required Color tip,
+  }) {
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(angle);
+    // A rounded, slightly heart-tipped petal.
+    final path = Path()
+      ..moveTo(0, 0)
+      ..cubicTo(width * 0.62, -length * 0.22, width * 0.62, -length * 0.92,
+          width * 0.12, -length)
+      ..quadraticBezierTo(0, -length * 0.93, -width * 0.12, -length)
+      ..cubicTo(-width * 0.62, -length * 0.92, -width * 0.62, -length * 0.22,
+          0, 0)
+      ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [base, tip],
+        ).createShader(Rect.fromLTWH(-width / 2, -length, width, length)),
+    );
+    // Hairline vein for a hand-made feel.
+    canvas.drawLine(
+      Offset(0, -length * 0.18),
+      Offset(0, -length * 0.62),
+      Paint()
+        ..strokeWidth = length * 0.018
+        ..strokeCap = StrokeCap.round
+        ..color = const Color(0xFFE88AA6).withValues(alpha: 0.35),
+    );
+    canvas.restore();
+  }
+
+  void _star(Canvas canvas, Offset at, double r, Paint paint) {
+    final path = Path()
+      ..moveTo(at.dx, at.dy - r)
+      ..quadraticBezierTo(at.dx, at.dy, at.dx + r, at.dy)
+      ..quadraticBezierTo(at.dx, at.dy, at.dx, at.dy + r)
+      ..quadraticBezierTo(at.dx, at.dy, at.dx - r, at.dy)
+      ..quadraticBezierTo(at.dx, at.dy, at.dx, at.dy - r)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_BloomMarkPainter oldDelegate) =>
+      oldDelegate.tile != tile ||
+      oldDelegate.cornerRadius != cornerRadius ||
+      oldDelegate.inset != inset ||
+      oldDelegate.markScale != markScale ||
+      oldDelegate.flower != flower;
+}

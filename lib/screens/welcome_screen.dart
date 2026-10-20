@@ -49,6 +49,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late final AnimationController _exit;
   final PageController _pages = PageController();
   final GlobalKey _buttonKey = GlobalKey();
+  final GlobalKey _continueKey = GlobalKey();
+  final TextEditingController _name = TextEditingController();
+  final FocusNode _nameFocus = FocusNode();
+  late final AnimationController _nameIn;
+  bool _askingName = false;
   bool _holding = false;
   bool _leaving = false;
   bool _reduceMotion = false;
@@ -99,6 +104,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
+    _nameIn = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
     _entrance.addStatusListener((status) {
       if (status == AnimationStatus.completed && !_reduceMotion) {
         _story.forward(from: 0);
@@ -127,13 +136,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     _ambient.dispose();
     _story.dispose();
     _exit.dispose();
+    _nameIn.dispose();
+    _name.dispose();
+    _nameFocus.dispose();
     super.dispose();
   }
 
   // ---- Story autoplay --------------------------------------------------------
 
   void _onStoryStatus(AnimationStatus status) {
-    if (status != AnimationStatus.completed || _leaving || !_pages.hasClients) {
+    if (status != AnimationStatus.completed ||
+        _leaving ||
+        _askingName ||
+        !_pages.hasClients) {
       return;
     }
     final next = (_currentPage + 1) % _slides.length;
@@ -148,38 +163,66 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     _currentPage = page;
     HapticFeedback.selectionClick();
     _story.value = 0;
-    if (!_holding && !_reduceMotion && _entrance.isCompleted) {
+    if (!_holding && !_reduceMotion && !_askingName && _entrance.isCompleted) {
       _story.forward();
     }
   }
 
   void _hold(bool holding) {
     _holding = holding;
-    if (_reduceMotion || !_entrance.isCompleted || _leaving) return;
+    if (_reduceMotion || !_entrance.isCompleted || _leaving || _askingName) {
+      return;
+    }
     holding ? _story.stop() : _story.forward();
   }
 
   // ---- Helpers -----------------------------------------------------------------
 
-  Animation<double> _interval(double begin, double end,
-      [Curve curve = Curves.easeOutCubic]) {
+  Animation<double> _interval(
+    double begin,
+    double end, [
+    Curve curve = Curves.easeOutCubic,
+  ]) {
     return CurvedAnimation(
       parent: _entrance,
       curve: Interval(begin, end, curve: curve),
     );
   }
 
-  double get _page =>
-      _pages.hasClients && _pages.position.haveDimensions
-          ? _pages.page ?? 0
-          : 0;
+  double get _page => _pages.hasClients && _pages.position.haveDimensions
+      ? _pages.page ?? 0
+      : 0;
 
-  void _start() {
+  /// "Get Started": ask her name once, otherwise go straight in.
+  void _getStarted() {
+    if (_leaving || _askingName) return;
+    if (BloomScope.of(context).userName.trim().isNotEmpty) {
+      _enterApp(_buttonKey);
+      return;
+    }
+    HapticFeedback.lightImpact();
+    _story.stop();
+    setState(() => _askingName = true);
+    _nameIn.forward();
+    Future.delayed(const Duration(milliseconds: 450), () {
+      if (mounted && _askingName && !_leaving) _nameFocus.requestFocus();
+    });
+  }
+
+  void _submitName({bool skip = false}) {
+    final name = _name.text.trim();
+    if (_leaving || (!skip && name.isEmpty)) return;
+    if (!skip) unawaited(BloomScope.of(context).setUserName(name));
+    _nameFocus.unfocus();
+    _enterApp(_continueKey);
+  }
+
+  void _enterApp(GlobalKey from) {
     if (_leaving) return;
     _leaving = true;
     _story.stop();
     HapticFeedback.mediumImpact();
-    final box = _buttonKey.currentContext?.findRenderObject() as RenderBox?;
+    final box = from.currentContext?.findRenderObject() as RenderBox?;
     final origin = box != null && box.hasSize
         ? box.localToGlobal(box.size.center(Offset.zero))
         : MediaQuery.sizeOf(context).center(Offset.zero);
@@ -202,6 +245,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: BloomPalette.petalMist,
+        // The keyboard lifts the content instead of squashing the film.
+        resizeToAvoidBottomInset: false,
         body: Listener(
           onPointerDown: (_) => _hold(true),
           onPointerUp: (_) => _hold(false),
@@ -235,11 +280,20 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     GlowAtmosphere(ambient: _ambient, layer: GlowLayer.front),
                   ),
                   SafeArea(
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 460),
-                        child: _content(w, compact),
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        bottom: math.max(
+                          0.0,
+                          MediaQuery.viewInsetsOf(context).bottom -
+                              MediaQuery.paddingOf(context).bottom,
+                        ),
+                      ),
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 460),
+                          child: _content(w, compact),
+                        ),
                       ),
                     ),
                   ),
@@ -303,9 +357,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final page = _page;
         final f = focus.value;
         final x = Curves.easeInCubic.transform(_exit.value);
-        final breathe =
-            0.5 - 0.5 * math.cos(_ambient.value * 2 * math.pi);
-        final scale = (1.04 + 0.03 * breathe) * // slow breathing zoom
+        final breathe = 0.5 - 0.5 * math.cos(_ambient.value * 2 * math.pi);
+        final scale =
+            (1.04 + 0.03 * breathe) * // slow breathing zoom
             (1.14 - 0.14 * f) * // entrance zoom-out
             (1 + 0.1 * x); // exit push-in
         final tint = _tintAt(page);
@@ -397,7 +451,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         0.0,
         lift[r],
       ],
-      0.0, 0.0, 0.0, 1.0, 0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
     ];
   }();
 
@@ -464,37 +522,198 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(28, 0, 28, compact ? 10 : 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: compact ? 178 : 206,
-              child: PageView.builder(
-                controller: _pages,
-                itemCount: _slides.length,
-                onPageChanged: _onPageChanged,
-                itemBuilder: (context, i) => _slide(i, width, compact),
-              ),
-            ),
-            SizedBox(height: compact ? 14 : 22),
-            AnimatedBuilder(
-              animation: rise,
-              builder: (context, child) => Opacity(
-                opacity: rise.value,
-                child: Transform.translate(
-                  offset: Offset(0, (1 - rise.value) * 28),
-                  child: child,
+        child: AnimatedBuilder(
+          animation: _nameIn,
+          builder: (context, intro) {
+            final t = Curves.easeInOutCubic.transform(_nameIn.value);
+            return Stack(
+              alignment: Alignment.bottomCenter,
+              children: [
+                // The slides stay mounted underneath so nothing jumps.
+                IgnorePointer(
+                  ignoring: _askingName,
+                  child: Opacity(
+                    opacity: 1 - t,
+                    child: Transform.translate(
+                      offset: Offset(0, t * 24),
+                      child: intro,
+                    ),
+                  ),
+                ),
+                if (_askingName)
+                  Opacity(
+                    opacity: t,
+                    child: Transform.translate(
+                      offset: Offset(0, (1 - t) * 40),
+                      child: Transform.scale(
+                        scale: 0.96 + 0.04 * t,
+                        child: _nameStep(compact),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: compact ? 178 : 206,
+                child: PageView.builder(
+                  controller: _pages,
+                  itemCount: _slides.length,
+                  onPageChanged: _onPageChanged,
+                  itemBuilder: (context, i) => _slide(i, width, compact),
                 ),
               ),
-              child: _GetStartedButton(
-                key: _buttonKey,
-                ambient: _ambient,
-                onTap: _start,
+              SizedBox(height: compact ? 14 : 22),
+              AnimatedBuilder(
+                animation: rise,
+                builder: (context, child) => Opacity(
+                  opacity: rise.value,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - rise.value) * 28),
+                    child: child,
+                  ),
+                ),
+                child: _GetStartedButton(
+                  key: _buttonKey,
+                  ambient: _ambient,
+                  inkKey: const Key('start-reset'),
+                  label: 'Get Started',
+                  onTap: _getStarted,
+                ),
               ),
-            ),
-            SizedBox(height: compact ? 16 : 26),
-            FadeTransition(opacity: dots, child: _storyDots()),
-          ],
+              SizedBox(height: compact ? 16 : 26),
+              FadeTransition(opacity: dots, child: _storyDots()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Frosted card asking for her name — so every screen can greet her.
+  Widget _nameStep(bool compact) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(34),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(22, compact ? 18 : 24, 22, 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(34),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.95)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BloomMark(size: compact ? 44 : 54),
+              SizedBox(height: compact ? 6 : 10),
+              Text(
+                'What should we call you?',
+                textAlign: TextAlign.center,
+                style: BloomText.display(
+                  compact ? 23 : 26,
+                  wght: 600,
+                  height: 1.15,
+                  color: BloomPalette.mauveInk,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _name,
+                builder: (context, value, _) {
+                  final name = value.text.trim();
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 280),
+                    child: Text(
+                      name.isEmpty
+                          ? 'We\u2019ll greet you by name every day.'
+                          : 'Lovely to meet you, $name \u{1F338}',
+                      key: ValueKey(name.isEmpty),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: BloomText.body(
+                        14.5,
+                        wght: 600,
+                        color: BloomPalette.mauveSoft,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              SizedBox(height: compact ? 12 : 18),
+              TextField(
+                key: const Key('name-field'),
+                controller: _name,
+                focusNode: _nameFocus,
+                textAlign: TextAlign.center,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.done,
+                maxLength: 24,
+                cursorColor: BloomPalette.dustyRoseDeep,
+                onSubmitted: (_) => _submitName(),
+                style: BloomText.display(
+                  22,
+                  wght: 600,
+                  color: BloomPalette.mauveInk,
+                ),
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: 'Your first name',
+                  hintStyle: BloomText.display(
+                    21,
+                    wght: 500,
+                    fontStyle: FontStyle.italic,
+                    color: BloomPalette.mauveSoft.withValues(alpha: 0.6),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 15),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(22),
+                    borderSide: BorderSide(
+                      color: BloomPalette.dustyRose.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(22),
+                    borderSide: const BorderSide(
+                      color: BloomPalette.dustyRoseDeep,
+                      width: 1.6,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: compact ? 12 : 16),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _name,
+                builder: (context, value, _) => _GetStartedButton(
+                  key: _continueKey,
+                  ambient: _ambient,
+                  inkKey: const Key('name-continue'),
+                  label: 'Continue',
+                  enabled: value.text.trim().isNotEmpty,
+                  onTap: _submitName,
+                ),
+              ),
+              TextButton(
+                key: const Key('name-skip'),
+                onPressed: () => _submitName(skip: true),
+                child: Text(
+                  'Skip for now',
+                  style: BloomText.body(
+                    14.5,
+                    wght: 700,
+                    color: BloomPalette.mauveSoft,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -621,7 +840,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 curve: Curves.easeInOutCubic,
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 10,
+                ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: SizedBox(
@@ -749,10 +971,18 @@ class _GetStartedButton extends StatefulWidget {
     super.key,
     required this.ambient,
     required this.onTap,
+    required this.label,
+    required this.inkKey,
+    this.enabled = true,
   });
 
   final Animation<double> ambient;
   final VoidCallback onTap;
+  final String label;
+  final Key inkKey;
+
+  /// Disabled stays readable: rose label on a blush fill, no glow.
+  final bool enabled;
 
   @override
   State<_GetStartedButton> createState() => _GetStartedButtonState();
@@ -781,16 +1011,21 @@ class _GetStartedButtonState extends State<_GetStartedButton> {
           builder: (context, child) {
             final glow =
                 0.5 + 0.5 * math.sin(widget.ambient.value * 2 * math.pi * 8);
-            return DecoratedBox(
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
               decoration: BoxDecoration(
                 borderRadius: radius,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFEDAAB3), BloomPalette.dustyRoseDeep],
-                ),
+                color: widget.enabled ? null : BloomPalette.blushSoft,
+                gradient: widget.enabled
+                    ? const LinearGradient(
+                        colors: [Color(0xFFEDAAB3), BloomPalette.dustyRoseDeep],
+                      )
+                    : null,
                 boxShadow: [
                   BoxShadow(
-                    color: BloomPalette.dustyRoseDeep
-                        .withValues(alpha: 0.28 + 0.14 * glow),
+                    color: BloomPalette.dustyRoseDeep.withValues(
+                      alpha: widget.enabled ? 0.28 + 0.14 * glow : 0,
+                    ),
                     blurRadius: 20 + 8 * glow,
                     offset: const Offset(0, 10),
                   ),
@@ -803,18 +1038,19 @@ class _GetStartedButtonState extends State<_GetStartedButton> {
             borderRadius: radius,
             child: Stack(
               children: [
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: CustomPaint(
-                      painter: _SheenPainter(widget.ambient),
+                if (widget.enabled)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _SheenPainter(widget.ambient),
+                      ),
                     ),
                   ),
-                ),
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    key: const Key('start-reset'),
-                    onTap: widget.onTap,
+                    key: widget.inkKey,
+                    onTap: widget.enabled ? widget.onTap : null,
                     splashColor: Colors.white.withValues(alpha: 0.25),
                     highlightColor: Colors.white.withValues(alpha: 0.08),
                     child: SizedBox(
@@ -836,14 +1072,23 @@ class _GetStartedButtonState extends State<_GetStartedButton> {
                                 child: child,
                               );
                             },
-                            child: const Icon(
+                            child: Icon(
                               Icons.arrow_forward_rounded,
-                              color: Colors.white,
+                              color: widget.enabled
+                                  ? Colors.white
+                                  : BloomPalette.dustyRoseDeep,
                               size: 22,
                             ),
                           ),
                           const SizedBox(width: 10),
-                          Text('Get Started', style: BloomText.button()),
+                          Text(
+                            widget.label,
+                            style: BloomText.button(
+                              color: widget.enabled
+                                  ? Colors.white
+                                  : BloomPalette.dustyRoseDeep,
+                            ),
+                          ),
                         ],
                       ),
                     ),

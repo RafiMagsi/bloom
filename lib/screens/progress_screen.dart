@@ -4,6 +4,8 @@ import '../data/bloom_content.dart';
 import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
 import '../widgets/challenge_sheet.dart';
+import '../widgets/habit_glyph.dart';
+import '../widgets/glow_calendar.dart';
 import '../widgets/motion.dart';
 import '../widgets/share_progress_card.dart';
 import '../widgets/weekly_chart.dart';
@@ -40,24 +42,31 @@ class ProgressScreen extends StatelessWidget {
           Row(
             children: [
               _StatCard(
-                emoji: '🔥',
+                icon: Icons.local_fire_department_rounded,
+                tint: const Color(0xFFF2A07E),
                 value: controller.currentStreak,
                 label: 'day streak',
               ),
               const SizedBox(width: 10),
               _StatCard(
-                emoji: '✅',
+                icon: Icons.task_alt_rounded,
+                tint: BloomPalette.orchidDeep,
                 value: controller.totalCompletions,
                 label: 'check-ins',
               ),
               const SizedBox(width: 10),
               _StatCard(
-                emoji: '💗',
+                icon: Icons.favorite_rounded,
+                tint: BloomPalette.blushDeep,
                 value: controller.moods.length,
                 label: 'mood entries',
               ),
             ],
           ),
+          const SizedBox(height: 16),
+
+          // ---- Glow calendar ---------------------------------------------
+          GlowCalendar(controller: controller),
           const SizedBox(height: 16),
 
           // ---- Weekly chart ----------------------------------------------
@@ -130,7 +139,11 @@ class ProgressScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Text('🌿', style: TextStyle(fontSize: 22)),
+                    const IconTile(
+                      icon: Icons.local_florist_rounded,
+                      tint: BloomPalette.orchidDeep,
+                      size: 34,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text('30-Day Reset Challenge',
@@ -267,9 +280,15 @@ class ProgressScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Opacity(
-                      opacity: unlocked ? 1 : 0.5,
-                      child: Text(a.emoji,
-                          style: const TextStyle(fontSize: 28)),
+                      opacity: unlocked ? 1 : 0.55,
+                      child: IconTile(
+                        icon: _achievementIcons[a.id] ??
+                            Icons.auto_awesome_rounded,
+                        tint: unlocked
+                            ? Colors.white
+                            : BloomPalette.orchidDeep,
+                        size: 38,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -325,12 +344,14 @@ class ProgressScreen extends StatelessWidget {
 
 class _StatCard extends StatelessWidget {
   const _StatCard({
-    required this.emoji,
+    required this.icon,
+    required this.tint,
     required this.value,
     required this.label,
   });
 
-  final String emoji;
+  final IconData icon;
+  final Color tint;
   final int value;
   final String label;
 
@@ -355,7 +376,7 @@ class _StatCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
+            IconTile(icon: icon, tint: tint, size: 34),
             const SizedBox(height: 6),
             CountUp(value: value, style: BloomText.display(28, wght: 700)),
             Text(
@@ -370,3 +391,13 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+
+/// Line icons for the achievement badges.
+const Map<String, IconData> _achievementIcons = {
+  'first-bloom': Icons.eco_rounded,
+  'week-of-glow': Icons.local_fire_department_rounded,
+  'steady-rhythm': Icons.auto_awesome_rounded,
+  'heart-listener': Icons.favorite_rounded,
+  'halfway-bloom': Icons.spa_rounded,
+  'fully-bloomed': Icons.local_florist_rounded,
+};

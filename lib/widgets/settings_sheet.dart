@@ -4,6 +4,7 @@ import '../state/bloom_controller.dart';
 import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
 import 'motion.dart';
+import 'habit_glyph.dart';
 
 /// Settings sheet: profile name, daily reminders, replay welcome, reset data.
 Future<void> showSettingsSheet(
@@ -121,14 +122,16 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 Text('DAILY REMINDERS', style: BloomText.overline()),
                 const SizedBox(height: 6),
                 _ReminderTile(
-                  emoji: '☀️',
+                  icon: Icons.wb_sunny_rounded,
+                  tint: const Color(0xFFE5A93A),
                   title: 'Morning reminder',
                   subtitle: 'A gentle nudge to start your glow-up',
                   value: controller.morningReminder,
                   onChanged: controller.setMorningReminder,
                 ),
                 _ReminderTile(
-                  emoji: '🌙',
+                  icon: Icons.nightlight_round,
+                  tint: BloomPalette.orchidDeep,
                   title: 'Evening reminder',
                   subtitle: 'A soft reminder for your night reset',
                   value: controller.eveningReminder,
@@ -138,7 +141,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 Text('MORE', style: BloomText.overline()),
                 const SizedBox(height: 6),
                 _NavTile(
-                  emoji: '🌸',
+                  icon: Icons.local_florist_rounded,
+                  tint: BloomPalette.blushDeep,
                   title: 'Replay the welcome',
                   onTap: () {
                     Navigator.of(context).pop();
@@ -146,7 +150,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   },
                 ),
                 _NavTile(
-                  emoji: '🧹',
+                  icon: Icons.restart_alt_rounded,
+                  tint: BloomPalette.rose,
                   title: 'Reset all data',
                   destructive: true,
                   onTap: () {
@@ -172,14 +177,16 @@ class _SettingsSheetState extends State<_SettingsSheet> {
 
 class _ReminderTile extends StatelessWidget {
   const _ReminderTile({
-    required this.emoji,
+    required this.icon,
+    required this.tint,
     required this.title,
     required this.subtitle,
     required this.value,
     required this.onChanged,
   });
 
-  final String emoji;
+  final IconData icon;
+  final Color tint;
   final String title;
   final String subtitle;
   final bool value;
@@ -196,7 +203,7 @@ class _ReminderTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 22)),
+          IconTile(icon: icon, tint: tint, size: 38),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -221,13 +228,15 @@ class _ReminderTile extends StatelessWidget {
 
 class _NavTile extends StatelessWidget {
   const _NavTile({
-    required this.emoji,
+    required this.icon,
+    required this.tint,
     required this.title,
     required this.onTap,
     this.destructive = false,
   });
 
-  final String emoji;
+  final IconData icon;
+  final Color tint;
   final String title;
   final VoidCallback onTap;
   final bool destructive;
@@ -246,7 +255,7 @@ class _NavTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
+            IconTile(icon: icon, tint: tint, size: 34),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../data/bloom_content.dart';
+import '../data/mood_insights.dart';
 import '../models/habit.dart';
 import '../models/mood_entry.dart';
 import '../services/notification_service.dart';
@@ -111,14 +112,21 @@ class BloomController extends ChangeNotifier {
   double get todayProgress =>
       todayTotal == 0 ? 0 : todayDoneCount / todayTotal;
 
+  /// Fires (value increments) the moment the last habit of the day is done.
+  final ValueNotifier<int> dayBloomed = ValueNotifier<int>(0);
+
   Future<void> toggleHabit(Habit habit) async {
     final now = DateTime.now();
+    final before = todayDoneCount;
     final ids = List<String>.from(_completions[_key(now)] ?? const <String>[]);
     if (!ids.remove(habit.id)) {
       ids.add(habit.id);
     }
     _completions[_key(now)] = ids;
     notifyListeners();
+    if (todayTotal > 0 && before < todayTotal && todayDoneCount == todayTotal) {
+      dayBloomed.value++;
+    }
     await StorageService.setCompletedIds(now, ids);
   }
 
@@ -176,16 +184,58 @@ class BloomController extends ChangeNotifier {
         (sum, ids) => sum + ids.where((id) => _habits.any((h) => h.id == id)).length,
       );
 
+  /// Habits completed on [day] (only ones that still exist).
+  int completedCountOn(DateTime day) {
+    final ids = _completions[_key(day)] ?? const <String>[];
+    return ids.where((id) => _habits.any((h) => h.id == id)).length;
+  }
+
+  /// Whether a specific habit was done on [day].
+  bool habitDoneOn(String habitId, DateTime day) =>
+      (_completions[_key(day)] ?? const <String>[]).contains(habitId);
+
+  /// Consecutive days this habit was kept, counting back from today
+  /// (today only counts once it's done).
+  int habitStreak(String habitId) {
+    final now = DateTime.now();
+    var day = DateTime(now.year, now.month, now.day);
+    if (!habitDoneOn(habitId, day)) {
+      day = DateTime(day.year, day.month, day.day - 1);
+    }
+    var streak = 0;
+    while (streak < 3650 && habitDoneOn(habitId, day)) {
+      streak++;
+      day = DateTime(day.year, day.month, day.day - 1);
+    }
+    return streak;
+  }
+
+  /// Days this habit was kept in the last [days] days (including today).
+  int habitDaysInLast(String habitId, int days) {
+    final now = DateTime.now();
+    var count = 0;
+    for (var i = 0; i < days; i++) {
+      if (habitDoneOn(
+          habitId, DateTime(now.year, now.month, now.day - i))) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// Completion ratio (0…1) for any day.
+  double completionOn(DateTime day) {
+    final total = todayTotal == 0 ? 1 : todayTotal;
+    return (completedCountOn(day) / total).clamp(0.0, 1.0);
+  }
+
   /// Completion ratio for the last 7 days, oldest → newest (last = today).
   List<double> get weeklyCompletion {
     final now = DateTime.now();
-    final total = todayTotal == 0 ? 1 : todayTotal;
-    return List<double>.generate(7, (i) {
-      final day = now.subtract(Duration(days: 6 - i));
-      final ids = _completions[_key(day)] ?? const <String>[];
-      final valid = ids.where((id) => _habits.any((h) => h.id == id)).length;
-      return (valid / total).clamp(0.0, 1.0);
-    });
+    return List<double>.generate(
+      7,
+      (i) => completionOn(now.subtract(Duration(days: 6 - i))),
+    );
   }
 
   double get weekAverage =>
@@ -194,6 +244,22 @@ class BloomController extends ChangeNotifier {
   // ---- Mood journal ---------------------------------------------------------
 
   List<MoodEntry> get moods => List.unmodifiable(_moods);
+
+  /// The mood logged on [day], if any.
+  MoodEntry? moodOn(DateTime day) {
+    final key = _key(day);
+    for (final entry in _moods) {
+      if (_key(entry.date) == key) return entry;
+    }
+    return null;
+  }
+
+  /// Plain-language observations from the last month of check-ins.
+  List<MoodInsight> get moodInsights => computeMoodInsights(
+        moods: _moods,
+        completionOn: completionOn,
+        today: DateTime.now(),
+      );
 
   MoodEntry? get todayMood {
     final today = _key(DateTime.now());
@@ -303,6 +369,12 @@ class BloomController extends ChangeNotifier {
       .toList();
 
   // ---- Reset ---------------------------------------------------------------
+
+  @override
+  void dispose() {
+    dayBloomed.dispose();
+    super.dispose();
+  }
 
   Future<void> resetAll() async {
     await StorageService.clearAll();

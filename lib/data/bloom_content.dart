@@ -10,6 +10,16 @@ class MoodOption {
   final String label;
 }
 
+/// One colour per mood (same order as [kMoods]) for dots and charts.
+const List<Color> kMoodColors = [
+  Color(0xFFF2B33D), // Amazing — gold
+  Color(0xFFEC7FA5), // Good — rose
+  Color(0xFFB79BE0), // Calm — lilac
+  Color(0xFFCDB7A8), // Meh — sand
+  Color(0xFF8FA6C9), // Low — dusk blue
+  Color(0xFF8C5A7A), // Overwhelmed — plum
+];
+
 const List<MoodOption> kMoods = [
   MoodOption('😄', 'Amazing'),
   MoodOption('🙂', 'Good'),

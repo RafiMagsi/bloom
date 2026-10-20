@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../app_routes.dart';
 import '../data/bloom_content.dart';
 import '../models/habit.dart';
+import '../state/bloom_clock.dart';
 import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
+import 'habit_detail_screen.dart';
 import '../widgets/challenge_sheet.dart';
 import '../widgets/habit_tile.dart';
 import '../widgets/motion.dart';
@@ -90,7 +92,21 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_dateLine(now), style: BloomText.overline()),
+                    Row(
+                      children: [
+                        Icon(
+                          BloomClock.isEvening
+                              ? Icons.nightlight_round
+                              : Icons.wb_sunny_rounded,
+                          size: 14,
+                          color: BloomClock.isEvening
+                              ? BloomPalette.orchidDeep
+                              : const Color(0xFFE5A93A),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(_dateLine(now), style: BloomText.overline()),
+                      ],
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       controller.greetingFor(now),
@@ -150,7 +166,14 @@ class _HomeScreenState extends State<HomeScreen>
                         key: const Key('progress-percent'),
                         style: BloomText.h2(color: BloomPalette.orchidDeep),
                       ),
-                      Text('today', style: BloomText.caption()),
+                      Text(
+                        controller.todayProgress >= 1 ? 'bloomed ✨' : 'today',
+                        style: BloomText.caption(
+                          color: controller.todayProgress >= 1
+                              ? BloomPalette.blushDeep
+                              : BloomPalette.inkSoft,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -179,7 +202,11 @@ class _HomeScreenState extends State<HomeScreen>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('🔥', style: TextStyle(fontSize: 15)),
+                              const Icon(
+                                Icons.local_fire_department_rounded,
+                                size: 17,
+                                color: Color(0xFFE0714F),
+                              ),
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
@@ -264,7 +291,8 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
           BloomSegmented(
-            labels: const ['☀️  Morning', '🌙  Evening'],
+            labels: const ['Morning', 'Evening'],
+            icons: const [Icons.wb_sunny_rounded, Icons.nightlight_round],
             index: _segment,
             keyPrefix: 'home-segment-',
             verticalPadding: 11,
@@ -306,6 +334,7 @@ class _HomeScreenState extends State<HomeScreen>
                             habit: h,
                             done: controller.isDone(h.id),
                             onTap: () => controller.toggleHabit(h),
+                            onOpen: () => openHabitDetail(context, h),
                           ),
                         ),
                     ],

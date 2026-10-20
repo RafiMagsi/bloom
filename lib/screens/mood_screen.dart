@@ -5,6 +5,7 @@ import '../data/bloom_content.dart';
 import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
 import '../widgets/motion.dart';
+import '../widgets/mood_trend.dart';
 
 /// 04 — Mood Journal: emoji check-in, private note, history view.
 class MoodScreen extends StatefulWidget {
@@ -106,6 +107,7 @@ class _MoodScreenState extends State<MoodScreen> {
               children: List.generate(kMoods.length, (i) {
                 final mood = kMoods[i];
                 final selected = _selected == i;
+                final tint = kMoodColors[i];
                 final pop = selected ? 1.05 : 1.0;
                 return GestureDetector(
                   key: Key('mood-$i'),
@@ -114,29 +116,29 @@ class _MoodScreenState extends State<MoodScreen> {
                     setState(() => _selected = i);
                   },
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOut,
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutBack,
                     transformAlignment: Alignment.center,
                     transform: Matrix4.diagonal3Values(pop, pop, 1),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: selected
-                          ? BloomPalette.blushSoft
-                          : BloomPalette.cream,
+                      // Every mood wears its own colour; the chosen one glows.
+                      color: Color.lerp(
+                        Colors.white,
+                        tint,
+                        selected ? 0.24 : 0.09,
+                      ),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: selected
-                            ? BloomPalette.blushDeep
-                            : Colors.transparent,
+                        color: selected ? tint : Colors.transparent,
                         width: 2,
                       ),
                       boxShadow: selected
                           ? [
                               BoxShadow(
-                                color: BloomPalette.blushDeep
-                                    .withValues(alpha: 0.3),
-                                blurRadius: 16,
-                                offset: const Offset(0, 6),
+                                color: tint.withValues(alpha: 0.4),
+                                blurRadius: 18,
+                                offset: const Offset(0, 7),
                               ),
                             ]
                           : null,
@@ -144,17 +146,23 @@ class _MoodScreenState extends State<MoodScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(mood.emoji,
-                            style: TextStyle(
-                                fontSize: selected ? 36 : 32)),
+                        _Breathe(
+                          active: selected,
+                          child: Text(
+                            mood.emoji,
+                            style: TextStyle(fontSize: selected ? 36 : 32),
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         Text(
                           mood.label,
-                          style: BloomText.body(12.5,
-                              wght: 700,
-                              color: selected
-                                  ? BloomPalette.blushDeep
-                                  : BloomPalette.inkSoft),
+                          style: BloomText.body(
+                            12.5,
+                            wght: selected ? 800 : 700,
+                            color: selected
+                                ? Color.lerp(tint, BloomPalette.ink, 0.45)!
+                                : BloomPalette.inkSoft,
+                          ),
                         ),
                       ],
                     ),
@@ -240,6 +248,10 @@ class _MoodScreenState extends State<MoodScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 26),
+
+          // ---- Month trend + insights -------------------------------------
+          MoodTrendCard(controller: controller),
           const SizedBox(height: 26),
 
           // ---- History ---------------------------------------------------
@@ -397,6 +409,56 @@ class _MoodStrip extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+/// Gently breathes (scales) its child while [active].
+class _Breathe extends StatefulWidget {
+  const _Breathe({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  State<_Breathe> createState() => _BreatheState();
+}
+
+class _BreatheState extends State<_Breathe>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.active) _c.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(_Breathe oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !_c.isAnimating) {
+      _c.repeat(reverse: true);
+    } else if (!widget.active && _c.isAnimating) {
+      _c.animateTo(0, duration: const Duration(milliseconds: 250));
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: Tween<double>(begin: 1, end: 1.1)
+          .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut)),
+      child: widget.child,
     );
   }
 }
