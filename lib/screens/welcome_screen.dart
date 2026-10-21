@@ -48,8 +48,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late final AnimationController _story;
   late final AnimationController _exit;
   final PageController _pages = PageController();
-  final GlobalKey _buttonKey = GlobalKey();
-  final GlobalKey _continueKey = GlobalKey();
   final TextEditingController _name = TextEditingController();
   final FocusNode _nameFocus = FocusNode();
   late final AnimationController _nameIn;
@@ -197,7 +195,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void _getStarted() {
     if (_leaving || _askingName) return;
     if (BloomScope.of(context).userName.trim().isNotEmpty) {
-      _enterApp(_buttonKey);
+      _enterApp();
       return;
     }
     HapticFeedback.lightImpact();
@@ -214,27 +212,23 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     if (_leaving || (!skip && name.isEmpty)) return;
     if (!skip) unawaited(BloomScope.of(context).setUserName(name));
     _nameFocus.unfocus();
-    _enterApp(_continueKey);
+    _enterApp();
   }
 
-  void _enterApp(GlobalKey from) {
+  /// Objects leave, the backgrounds dissolve, the dashboard's objects arrive:
+  /// the landing's content slips away while its film brightens and pushes
+  /// in; the app's backdrop dissolves in beneath and its cards rise.
+  void _enterApp() {
     if (_leaving) return;
     _leaving = true;
     _story.stop();
     HapticFeedback.mediumImpact();
-    final box = from.currentContext?.findRenderObject() as RenderBox?;
-    final origin = box != null && box.hasSize
-        ? box.localToGlobal(box.size.center(Offset.zero))
-        : MediaQuery.sizeOf(context).center(Offset.zero);
     final controller = BloomScope.of(context);
     final navigator = Navigator.of(context);
-    // The landing drifts forward and brightens while the app blooms open.
     // Persistence finishes in the background; the transition starts now.
     _exit.forward();
     unawaited(controller.completeOnboarding());
-    navigator.pushReplacement(
-      bloomRevealRoute(const BloomShell(), origin: origin),
-    );
+    navigator.pushReplacement(sceneRoute(const BloomShell()));
   }
 
   // ---- Build -------------------------------------------------------------------
@@ -577,7 +571,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   ),
                 ),
                 child: _GetStartedButton(
-                  key: _buttonKey,
                   ambient: _ambient,
                   inkKey: const Key('start-reset'),
                   label: 'Get Started',
@@ -692,7 +685,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ValueListenableBuilder<TextEditingValue>(
                 valueListenable: _name,
                 builder: (context, value, _) => _GetStartedButton(
-                  key: _continueKey,
                   ambient: _ambient,
                   inkKey: const Key('name-continue'),
                   label: 'Continue',
@@ -968,7 +960,6 @@ class _IconMedallion extends StatelessWidget {
 /// arrow and a tactile press.
 class _GetStartedButton extends StatefulWidget {
   const _GetStartedButton({
-    super.key,
     required this.ambient,
     required this.onTap,
     required this.label,

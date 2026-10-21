@@ -182,6 +182,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('nav-routine')));
     await tester.pump(const Duration(milliseconds: 350));
+    // Let the new tab's objects finish arriving.
+    await tester.pump(const Duration(milliseconds: 900));
     expect(find.text('My Routine'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('add-habit')));
@@ -215,6 +217,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('nav-mood')));
     await tester.pump(const Duration(milliseconds: 350));
+    // Let the new tab's objects finish arriving.
+    await tester.pump(const Duration(milliseconds: 900));
     expect(find.text('Mood Journal'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('mood-2'))); // 😌 Calm
@@ -246,6 +250,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('nav-progress')));
     await tester.pump(const Duration(milliseconds: 400));
+    // Let the new tab's objects finish arriving.
+    await tester.pump(const Duration(milliseconds: 900));
 
     expect(find.text('My Progress'), findsOneWidget);
     expect(find.text('Your glow month'), findsOneWidget);

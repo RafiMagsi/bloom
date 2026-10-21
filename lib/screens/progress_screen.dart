@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/bloom_content.dart';
 import '../state/bloom_scope.dart';
 import '../theme/bloom_theme.dart';
+import '../widgets/achievement_card.dart';
 import '../widgets/challenge_sheet.dart';
 import '../widgets/habit_glyph.dart';
 import '../widgets/glow_calendar.dart';
@@ -248,86 +249,15 @@ class ProgressScreen extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 1.16,
-            children: kAchievements.map((a) {
-              final unlocked = controller.isUnlocked(a);
-              final progress = controller.achievementProgress(a);
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: unlocked
-                      ? BloomTheme.blushGradient
-                      : null,
-                  color: unlocked ? null : BloomPalette.card,
-                  borderRadius: BorderRadius.circular(26),
-                  border: Border.all(
-                    color: unlocked
-                        ? Colors.transparent
-                        : BloomPalette.ink.withValues(alpha: 0.05),
-                  ),
-                  boxShadow: unlocked
-                      ? [
-                          BoxShadow(
-                            color: BloomPalette.blushDeep
-                                .withValues(alpha: 0.35),
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
-                        ]
-                      : null,
+            childAspectRatio: 0.74,
+            children: [
+              for (final a in kAchievements)
+                AchievementCard(
+                  achievement: a,
+                  unlocked: controller.isUnlocked(a),
+                  value: controller.metricValue(a.metric),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Opacity(
-                      opacity: unlocked ? 1 : 0.55,
-                      child: IconTile(
-                        icon: _achievementIcons[a.id] ??
-                            Icons.auto_awesome_rounded,
-                        tint: unlocked
-                            ? Colors.white
-                            : BloomPalette.orchidDeep,
-                        size: 38,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      a.title,
-                      style: BloomText.cardTitle(
-                        color: unlocked ? Colors.white : BloomPalette.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Expanded(
-                      child: Text(
-                        unlocked ? a.subtitle : a.subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: BloomText.caption(
-                          color: unlocked
-                              ? Colors.white.withValues(alpha: 0.9)
-                              : BloomPalette.inkSoft,
-                        ),
-                      ),
-                    ),
-                    if (!unlocked) ...[
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 5,
-                          backgroundColor: BloomPalette.creamDeep,
-                          valueColor: const AlwaysStoppedAnimation(
-                            BloomPalette.orchidDeep,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            }).toList(),
+            ],
           ),
           const SizedBox(height: 24),
 
@@ -392,12 +322,3 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Line icons for the achievement badges.
-const Map<String, IconData> _achievementIcons = {
-  'first-bloom': Icons.eco_rounded,
-  'week-of-glow': Icons.local_fire_department_rounded,
-  'steady-rhythm': Icons.auto_awesome_rounded,
-  'heart-listener': Icons.favorite_rounded,
-  'halfway-bloom': Icons.spa_rounded,
-  'fully-bloomed': Icons.local_florist_rounded,
-};

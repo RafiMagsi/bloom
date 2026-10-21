@@ -27,20 +27,32 @@ class EntranceScope extends InheritedWidget {
   const EntranceScope({
     super.key,
     required this.animation,
+    this.drift = 0,
     required super.child,
   });
 
+  /// The screen's presence: 0 = gone, 1 = fully arrived. Running it forward
+  /// plays the entrance; reversing it plays the exit.
   final Animation<double> animation;
 
+  /// Horizontal travel (px) for items while they are not fully present.
+  /// 0 = items rise vertically; +x = they arrive from / leave to the right.
+  final double drift;
+
+  static EntranceScope? scopeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<EntranceScope>();
+
   static Animation<double>? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<EntranceScope>()?.animation;
+      scopeOf(context)?.animation;
 
   @override
   bool updateShouldNotify(EntranceScope oldWidget) =>
-      oldWidget.animation != animation;
+      oldWidget.animation != animation || oldWidget.drift != drift;
 }
 
-/// Floats its child up and in, a beat after the item before it ([order]).
+/// One object on a screen. It arrives a beat after the item before it
+/// ([order]) and, when the screen leaves, departs on its own — so screens
+/// never cross-fade as a whole; their objects move.
 class Reveal extends StatelessWidget {
   const Reveal({super.key, required this.order, required this.child});
 
@@ -49,23 +61,37 @@ class Reveal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final parent = EntranceScope.maybeOf(context);
-    if (parent == null) return child;
-    final start = (order * 0.055).clamp(0.0, 0.5);
-    final t = CurvedAnimation(
-      parent: parent,
-      curve: Interval(start, start + 0.5, curve: BloomMotion.settle),
-    );
+    final scope = EntranceScope.scopeOf(context);
+    if (scope == null) return child;
+    final presence = scope.animation;
+    final drift = scope.drift;
+    // Sideways arrivals wait a beat so the leaving objects clear first.
+    final delay = drift == 0 ? 0.0 : 0.1;
+    final start = (order * 0.055).clamp(0.0, 0.5 - delay);
     return AnimatedBuilder(
-      animation: t,
+      animation: presence,
       child: child,
-      builder: (context, child) => Opacity(
-        opacity: t.value,
-        child: Transform.translate(
-          offset: Offset(0, (1 - t.value) * 26),
-          child: Transform.scale(scale: 0.985 + 0.015 * t.value, child: child),
-        ),
-      ),
+      builder: (context, child) {
+        // Arrivals cascade top → bottom and settle softly. Departures also
+        // go top → bottom (so the old title clears before the new one lands)
+        // and accelerate away.
+        final leaving = presence.status == AnimationStatus.reverse;
+        final from = leaving ? 0.5 - start : start + delay;
+        final local = ((presence.value - from) / 0.5).clamp(0.0, 1.0);
+        final t = leaving
+            ? Curves.easeInCubic.transform(local)
+            : BloomMotion.settle.transform(local);
+        final away = 1 - t;
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: drift == 0
+                ? Offset(0, away * 26)
+                : Offset(drift * away, away * 8),
+            child: Transform.scale(scale: 0.985 + 0.015 * t, child: child),
+          ),
+        );
+      },
     );
   }
 }
@@ -186,8 +212,9 @@ class BloomSegmented extends StatelessWidget {
                           style: BloomText.body(
                             14.5,
                             wght: 700,
-                            color:
-                                active ? BloomPalette.ink : BloomPalette.inkSoft,
+                            color: active
+                                ? BloomPalette.ink
+                                : BloomPalette.inkSoft,
                           ),
                           child: Text(labels[i], textAlign: TextAlign.center),
                         ),
